@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     Importiert die geplanten Tasks Device-Sync und Automatic-Device-Join in die Aufgabenplanung.
@@ -41,7 +41,7 @@ foreach ($Task in $Tasks) {
     $XmlFile = Join-Path -Path $SourcePath -ChildPath $Task.File
 
     if (-not (Test-Path -Path $XmlFile)) {
-        Write-Warning "Datei nicht gefunden: $XmlFile — Task '$($Task.Name)' wird übersprungen."
+        Write-Warning "Datei nicht gefunden: $XmlFile - Task '$($Task.Name)' wird uebersprungen."
         continue
     }
 
