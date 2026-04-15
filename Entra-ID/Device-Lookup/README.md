@@ -11,7 +11,7 @@ rich, colour-coded device details in a modern dashboard.
 1. [How the Program Works](#how-the-program-works)
 2. [Features](#features)
 3. [Prerequisites](#prerequisites)
-4. [Installation – Step by Step](#installation--step-by-step)
+4. [Installation -- Step by Step](#installation--step-by-step)
 5. [Running the Tool](#running-the-tool)
 6. [GUI Walkthrough](#gui-walkthrough)
 7. [Search Modes](#search-modes)
@@ -102,7 +102,7 @@ to the Microsoft Graph API (the same API used by the Entra portal itself).
 
 ---
 
-## Installation – Step by Step
+## Installation -- Step by Step
 
 ### Step 1 – Download the tool files
 
@@ -260,7 +260,7 @@ Enter one or more device **display names** exactly as they appear in Entra ID.
 | Multiple devices (comma-separated) | `PC-001, PC-002, PC-003` |
 | Multiple devices (one per line) | Type each name on its own line |
 
-> Names are matched by **exact display name** (case-insensitive).  
+> Names are matched by **exact display name** (case-insensitive).
 > Partial / wildcard search is not supported in this mode.
 
 ### 🌲 OU Path (Hybrid AD)
