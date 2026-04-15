@@ -11,6 +11,7 @@ Scripts, tools, and fixes related to **Microsoft Entra ID** (formerly Azure Acti
 | [Conditional-Access](./Conditional-Access/) | Conditional Access policies and named locations |
 | [App-Registrations](./App-Registrations/) | App registrations, service principals, and permissions |
 | [RBAC](./RBAC/) | Role-Based Access Control and custom role definitions |
+| [Device-Lookup](./Device-Lookup/) | GUI tool to look up and inspect Entra ID computer/device objects |
 
 ## Useful Resources
 
