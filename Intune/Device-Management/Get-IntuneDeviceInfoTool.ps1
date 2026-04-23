@@ -30,7 +30,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Connect-IntuneTool {
-    param([string]$TenantId)
+    param(
+        [string]$TenantId,
+        [string[]]$Scopes = @('DeviceManagementManagedDevices.Read.All')
+    )
 
     if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
         throw "Missing required module 'Microsoft.Graph.Authentication'. Install it first: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser"
@@ -38,9 +41,7 @@ function Connect-IntuneTool {
 
     Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
 
-    $connectParams = @{
-        Scopes = @('DeviceManagementManagedDevices.Read.All')
-    }
+    $connectParams = @{ Scopes = $Scopes }
     if ($TenantId) { $connectParams.TenantId = $TenantId }
 
     Connect-MgGraph @connectParams -ErrorAction Stop | Out-Null
@@ -85,7 +86,7 @@ function Get-IntuneManagedDeviceInfo {
     )
     $filter = $filterParts -join ' or '
     $select = 'id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managementAgent,enrolledDateTime,manufacturer,model,serialNumber'
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$filter=$([Uri]::EscapeDataString($filter))&`$select=$select&`$top=100"
+    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$filter=$([Uri]::EscapeDataString($filter))&`$select=$select&`$top=999"
 
     $items = [System.Collections.Generic.List[object]]::new()
     while ($uri) {
@@ -321,6 +322,13 @@ Enrolled: $enrolledDate
         }
     })
     $grid.Add_SelectionChanged($populateDetail)
+
+    $toolList.Add_SelectedIndexChanged({
+        if ($toolList.SelectedIndex -ne 0) {
+            $toolList.SelectedIndex = 0
+            $statusLabel.Text = 'Only "Get Intune Device Info" is currently implemented.'
+        }
+    })
 
     $toolPanel.Controls.AddRange(@(
         $searchLabel, $searchBox, $searchButton, $grid, $detail
