@@ -104,6 +104,12 @@ function Get-IntuneManagedDeviceInfo {
     return $items.ToArray()
 }
 
+function Get-DisplayValue {
+    param($Value)
+    if ($null -eq $Value) { return '' }
+    return [string]$Value
+}
+
 function Show-IntuneToolForm {
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
@@ -355,8 +361,3 @@ try {
         Disconnect-IntuneTool
     }
 }
-    function Get-DisplayValue {
-        param($Value)
-        if ($null -eq $Value) { return '' }
-        return [string]$Value
-    }
