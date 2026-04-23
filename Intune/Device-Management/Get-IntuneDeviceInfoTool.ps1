@@ -67,7 +67,8 @@ function Invoke-IntuneGraphRequest {
             if ($_.Exception.Response) {
                 $statusCode = [int]$_.Exception.Response.StatusCode
             }
-            if ($attempt -ge $MaxRetries -or $statusCode -notin @(429, 503)) {
+            $isTransientServerError = ($statusCode -ge 500 -and $statusCode -le 599 -and $statusCode -ne 501)
+            if ($attempt -ge $MaxRetries -or (-not $isTransientServerError -and $statusCode -notin @(429, 503))) {
                 throw
             }
             Start-Sleep -Seconds (2 * $attempt)
@@ -78,7 +79,7 @@ function Invoke-IntuneGraphRequest {
 function Get-IntuneManagedDeviceInfo {
     param(
         [Parameter(Mandatory)][string]$SearchText,
-        [ValidateRange(1, 999)][int]$PageSize = 200
+        [ValidateRange(1, 500)][int]$PageSize = 200
     )
 
     $safeSearch = $SearchText.Trim()
