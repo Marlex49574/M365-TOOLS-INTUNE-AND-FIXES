@@ -76,9 +76,15 @@ function Invoke-IntuneGraphRequest {
 }
 
 function Get-IntuneManagedDeviceInfo {
-    param([Parameter(Mandatory)][string]$SearchText)
+    param(
+        [Parameter(Mandatory)][string]$SearchText,
+        [ValidateRange(1, 999)][int]$PageSize = 200
+    )
 
-    $safeSearch = $SearchText.Replace("'", "''").Trim()
+    $safeSearch = $SearchText.Trim()
+    if ($safeSearch -notmatch "^[a-zA-Z0-9@\.\-_ ]+$") {
+        throw "Search contains unsupported characters. Allowed: letters, numbers, space, @, ., -, _"
+    }
     $filterParts = @(
         "startswith(deviceName,'$safeSearch')"
         "startswith(userPrincipalName,'$safeSearch')"
@@ -86,7 +92,7 @@ function Get-IntuneManagedDeviceInfo {
     )
     $filter = $filterParts -join ' or '
     $select = 'id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managementAgent,enrolledDateTime,manufacturer,model,serialNumber'
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$filter=$([Uri]::EscapeDataString($filter))&`$select=$select&`$top=999"
+    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$filter=$([Uri]::EscapeDataString($filter))&`$select=$select&`$top=$PageSize"
 
     $items = [System.Collections.Generic.List[object]]::new()
     while ($uri) {
@@ -241,9 +247,9 @@ function Show-IntuneToolForm {
         if (-not $grid.CurrentRow) { return }
         $row = $grid.CurrentRow
         $device = $row.Tag
-        $serialNumber = if ($device -and $device.serialNumber) { $device.serialNumber } else { '' }
-        $manufacturer = if ($device -and $device.manufacturer) { $device.manufacturer } else { '' }
-        $model = if ($device -and $device.model) { $device.model } else { '' }
+        $serialNumber = if ($device) { Get-DisplayValue $device.serialNumber } else { '' }
+        $manufacturer = if ($device) { Get-DisplayValue $device.manufacturer } else { '' }
+        $model = if ($device) { Get-DisplayValue $device.model } else { '' }
         $enrolledDate = if ($device -and $device.enrolledDateTime) {
             ([datetime]$device.enrolledDateTime).ToString('yyyy-MM-dd HH:mm')
         } else { '' }
@@ -349,3 +355,8 @@ try {
         Disconnect-IntuneTool
     }
 }
+    function Get-DisplayValue {
+        param($Value)
+        if ($null -eq $Value) { return '' }
+        return [string]$Value
+    }
