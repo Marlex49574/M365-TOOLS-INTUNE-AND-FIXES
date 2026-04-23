@@ -67,6 +67,7 @@ function Invoke-IntuneGraphRequest {
             if ($_.Exception.Response) {
                 $statusCode = [int]$_.Exception.Response.StatusCode
             }
+            # 501 indicates unsupported operation and is not expected to succeed on retry.
             $isTransientServerError = ($statusCode -ge 500 -and $statusCode -le 599 -and $statusCode -ne 501)
             if ($attempt -ge $MaxRetries -or (-not $isTransientServerError -and $statusCode -notin @(429, 503))) {
                 throw
@@ -84,7 +85,7 @@ function Get-IntuneManagedDeviceInfo {
 
     $safeSearch = $SearchText.Trim()
     if ($safeSearch -notmatch "^[a-zA-Z0-9@\.\-_ ]+$") {
-        throw "Search contains unsupported characters. Allowed: letters, numbers, space, @, ., -, _"
+        throw "Search contains unsupported characters. Allowed: letters, numbers, spaces, @, ., -, _"
     }
     $filterParts = @(
         "startswith(deviceName,'$safeSearch')"
