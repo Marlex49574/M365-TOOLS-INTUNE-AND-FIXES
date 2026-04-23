@@ -33,7 +33,7 @@ function Connect-IntuneTool {
     param([string]$TenantId)
 
     if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
-        Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force -AllowClobber
+        throw "Missing required module 'Microsoft.Graph.Authentication'. Install it first: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser"
     }
 
     Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
@@ -239,6 +239,14 @@ function Show-IntuneToolForm {
     $populateDetail = {
         if (-not $grid.CurrentRow) { return }
         $row = $grid.CurrentRow
+        $device = $row.Tag
+        $serialNumber = if ($device -and $device.serialNumber) { $device.serialNumber } else { '' }
+        $manufacturer = if ($device -and $device.manufacturer) { $device.manufacturer } else { '' }
+        $model = if ($device -and $device.model) { $device.model } else { '' }
+        $enrolledDate = if ($device -and $device.enrolledDateTime) {
+            ([datetime]$device.enrolledDateTime).ToString('yyyy-MM-dd HH:mm')
+        } else { '' }
+
         $detail.Text = @"
 Device Name: $($row.Cells['Device Name'].Value)
 Primary User: $($row.Cells['Primary User'].Value)
@@ -246,6 +254,10 @@ OS: $($row.Cells['OS'].Value)
 Compliance: $($row.Cells['Compliance'].Value)
 Last Sync: $($row.Cells['Last Sync'].Value)
 Management Agent: $($row.Cells['Management Agent'].Value)
+Manufacturer: $manufacturer
+Model: $model
+Serial Number: $serialNumber
+Enrolled: $enrolledDate
 "@
     }
 
@@ -269,7 +281,7 @@ Management Agent: $($row.Cells['Management Agent'].Value)
                 $lastSyncDisplay = if ($device.lastSyncDateTime) {
                     ([datetime]$device.lastSyncDateTime).ToString('yyyy-MM-dd HH:mm')
                 } else { '' }
-                [void]$grid.Rows.Add(
+                $rowIndex = $grid.Rows.Add(
                     $device.deviceName,
                     $device.userPrincipalName,
                     $osText.Trim(),
@@ -277,6 +289,7 @@ Management Agent: $($row.Cells['Management Agent'].Value)
                     $lastSyncDisplay,
                     $device.managementAgent
                 )
+                $grid.Rows[$rowIndex].Tag = $device
             }
 
             $statusLabel.Text = "Loaded $($grid.Rows.Count) device(s)."
