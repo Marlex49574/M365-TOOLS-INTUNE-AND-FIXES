@@ -49,14 +49,27 @@ function Find-ADComputerObject {
 
     try {
         Import-Module ActiveDirectory -ErrorAction Stop
-        $computer = Get-ADComputer -Identity $Name -ErrorAction Stop
-        return $computer
-    } catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
-        # Computer not found in AD – not an error, just absent
+
+        # Strip any stray BOM or whitespace the CSV may have introduced
+        $cleanName = $Name.Trim().TrimStart([char]0xFEFF)
+
+        # Try by Name (cn attribute) first – works regardless of OU placement
+        $computer = Get-ADComputer -Filter "Name -eq '$cleanName'" -Properties DistinguishedName -ErrorAction Stop
+
+        # Fallback: search by SamAccountName (stored as COMPUTERNAME$ in AD)
+        if (-not $computer) {
+            $sam = "${cleanName}$"
+            $computer = Get-ADComputer -Filter "SamAccountName -eq '$sam'" -Properties DistinguishedName -ErrorAction Stop
+        }
+
+        if ($computer -and @($computer).Count -gt 0) {
+            return @($computer)[0]
+        }
         return $null
     } catch {
-        Write-Verbose "Find-ADComputerObject failed for '$Name': $_"
-        return $null
+        # Propagate real errors (permissions, connectivity, etc.) so the
+        # caller can surface them as "Error" rather than silent "Not found".
+        throw
     }
 }
 
@@ -86,6 +99,10 @@ function Remove-ADComputerObject {
     }
 
     Import-Module ActiveDirectory -ErrorAction Stop
-    Remove-ADComputer -Identity $Name -Confirm:$false -ErrorAction Stop
+    $computer = Get-ADComputer -Filter "Name -eq '$Name'" -ErrorAction Stop
+    if (-not $computer) {
+        throw "Computer '$Name' not found in Active Directory."
+    }
+    Remove-ADObject -Identity $computer.DistinguishedName -Recursive -Confirm:$false -ErrorAction Stop
     return $true
 }

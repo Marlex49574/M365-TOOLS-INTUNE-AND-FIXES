@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Builds and displays the main WinForms window for the Bulk Device Delete Tool.
@@ -291,7 +291,7 @@ function Show-BulkDeleteForm {
             return
         }
         try {
-            $script:DeviceNames = Import-DeviceList -Path $path
+            $script:DeviceNames = @(Import-DeviceList -Path $path)
         } catch {
             [System.Windows.Forms.MessageBox]::Show(
                 "Failed to read CSV file:`n`n$_",
@@ -337,17 +337,23 @@ function Show-BulkDeleteForm {
 
         for ($i = 0; $i -lt $script:DeviceNames.Count; $i++) {
             $name = $script:DeviceNames[$i]
+            & $appendLog "  Searching for: '$name' (length: $($name.Length))" 'Info'
 
             # AD
             if ($chkAD.Checked) {
                 if (Test-ADModuleAvailable) {
-                    $adObj = Find-ADComputerObject -Name $name
-                    if ($adObj) {
-                        & $setRowStatus $i 'ADStatus' 'Found'
-                        & $appendLog "  $name  [AD] Found: $($adObj.DistinguishedName)" 'Info'
-                    } else {
-                        & $setRowStatus $i 'ADStatus' 'NotFound'
-                        & $appendLog "  $name  [AD] Not found." 'Warning'
+                    try {
+                        $adObj = Find-ADComputerObject -Name $name
+                        if ($adObj) {
+                            & $setRowStatus $i 'ADStatus' 'Found'
+                            & $appendLog "  $name  [AD] Found: $($adObj.DistinguishedName)" 'Info'
+                        } else {
+                            & $setRowStatus $i 'ADStatus' 'NotFound'
+                            & $appendLog "  $name  [AD] Not found." 'Warning'
+                        }
+                    } catch {
+                        & $setRowStatus $i 'ADStatus' 'Error'
+                        & $appendLog "  $name  [AD] Error during preview: $_" 'Error'
                     }
                 } else {
                     & $setRowStatus $i 'ADStatus' 'Skipped (no RSAT)'
@@ -363,7 +369,12 @@ function Show-BulkDeleteForm {
                     $entraObjs = Find-EntraDevice -Name $name
                     if ($entraObjs -and $entraObjs.Count -gt 0) {
                         & $setRowStatus $i 'EntraStatus' "Found ($($entraObjs.Count))"
-                        & $appendLog "  $name  [Entra] Found $($entraObjs.Count) object(s)." 'Info'
+                        & $appendLog "  $name  [Entra] Found $($entraObjs.Count) object(s) – will delete all:" 'Info'
+                        foreach ($obj in $entraObjs) {
+                            $enabled  = if ($obj.accountEnabled) { 'Enabled' } else { 'Disabled' }
+                            $os       = if ($obj.operatingSystem) { $obj.operatingSystem } else { 'Unknown OS' }
+                            & $appendLog "      ObjectId: $($obj.id)  |  DeviceId: $($obj.deviceId)  |  $os  |  $enabled" 'Info'
+                        }
                     } else {
                         & $setRowStatus $i 'EntraStatus' 'NotFound'
                         & $appendLog "  $name  [Entra] Not found." 'Warning'
@@ -382,7 +393,12 @@ function Show-BulkDeleteForm {
                     $intuneObjs = Find-IntuneDevice -Name $name
                     if ($intuneObjs -and $intuneObjs.Count -gt 0) {
                         & $setRowStatus $i 'IntuneStatus' "Found ($($intuneObjs.Count))"
-                        & $appendLog "  $name  [Intune] Found $($intuneObjs.Count) record(s)." 'Info'
+                        & $appendLog "  $name  [Intune] Found $($intuneObjs.Count) record(s) – will delete all:" 'Info'
+                        foreach ($obj in $intuneObjs) {
+                            $lastSync = if ($obj.lastSyncDateTime) { $obj.lastSyncDateTime } else { 'never' }
+                            $os       = if ($obj.operatingSystem) { $obj.operatingSystem } else { 'Unknown OS' }
+                            & $appendLog "      ManagedId: $($obj.id)  |  $os  |  Last sync: $lastSync  |  Compliance: $($obj.complianceState)" 'Info'
+                        }
                     } else {
                         & $setRowStatus $i 'IntuneStatus' 'NotFound'
                         & $appendLog "  $name  [Intune] Not found." 'Warning'
