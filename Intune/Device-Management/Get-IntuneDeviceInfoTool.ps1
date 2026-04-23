@@ -26,14 +26,14 @@ param(
     [switch]$SkipConnect
 )
 
-Set-StrictMode -Off
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Connect-IntuneTool {
     param([string]$TenantId = $null)
 
     if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
-        Install-Module Microsoft.Graph -Scope CurrentUser -Force -AllowClobber
+        Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force -AllowClobber
     }
 
     Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
@@ -261,13 +261,15 @@ Management Agent: $($row.Cells['Management Agent'].Value)
                 $osParts = @($device.operatingSystem)
                 if ($device.osVersion) { $osParts += $device.osVersion }
                 $osText = $osParts -join ' '
-                $lastSyncText = if ($device.lastSyncDateTime) { [datetime]$device.lastSyncDateTime } else { '' }
+                $lastSyncDisplay = if ($device.lastSyncDateTime) {
+                    ([datetime]$device.lastSyncDateTime).ToString('yyyy-MM-dd HH:mm')
+                } else { '' }
                 [void]$grid.Rows.Add(
                     $device.deviceName,
                     $device.userPrincipalName,
                     $osText.Trim(),
                     $device.complianceState,
-                    $lastSyncText,
+                    $lastSyncDisplay,
                     $device.managementAgent
                 )
             }
