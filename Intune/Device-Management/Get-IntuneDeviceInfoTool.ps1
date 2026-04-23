@@ -22,7 +22,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$TenantId = $null,
+    [string]$TenantId,
     [switch]$SkipConnect
 )
 
@@ -30,7 +30,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Connect-IntuneTool {
-    param([string]$TenantId = $null)
+    param([string]$TenantId)
 
     if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
         Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force -AllowClobber
@@ -78,7 +78,12 @@ function Get-IntuneManagedDeviceInfo {
     param([Parameter(Mandatory)][string]$SearchText)
 
     $safeSearch = $SearchText.Replace("'", "''").Trim()
-    $filter = "startswith(deviceName,'$safeSearch') or startswith(userPrincipalName,'$safeSearch') or startswith(serialNumber,'$safeSearch')"
+    $filterParts = @(
+        "startswith(deviceName,'$safeSearch')"
+        "startswith(userPrincipalName,'$safeSearch')"
+        "startswith(serialNumber,'$safeSearch')"
+    )
+    $filter = $filterParts -join ' or '
     $select = 'id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managementAgent,enrolledDateTime,manufacturer,model,serialNumber'
     $uri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$filter=$([Uri]::EscapeDataString($filter))&`$select=$select&`$top=100"
 
