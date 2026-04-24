@@ -69,7 +69,7 @@ function Get-IntuneManagedDeviceInfo {
     while ($uri) {
         $response = Invoke-IntuneGraphRequest -Uri $uri
         foreach ($item in @($response.value)) { $items.Add($item) }
-        $uri = $response.'@odata.nextLink'
+        $uri = if ($response.PSObject.Properties['@odata.nextLink']) { $response.'@odata.nextLink' } else { $null }
     }
 
     return $items.ToArray()
