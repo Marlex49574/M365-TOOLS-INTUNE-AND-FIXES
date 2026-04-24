@@ -10,6 +10,7 @@
 
     Tools available in the sidebar:
       - Get Intune Device Info  (Intune/Device-Management/Get-IntuneDeviceInfoTool.ps1)
+      - Bulk Device Delete      (Intune/Device-Management/Bulk-Device-Delete/Remove-DeviceBulkTool.ps1)
 
 .PARAMETER TenantId
     Optional tenant ID or domain used during Connect-MgGraph.
@@ -26,6 +27,7 @@
 .NOTES
     File layout expected relative to this script:
       ../../Intune/Device-Management/Get-IntuneDeviceInfoTool.ps1
+      ../../Intune/Device-Management/Bulk-Device-Delete/
 #>
 
 [CmdletBinding()]
@@ -51,11 +53,32 @@ if (-not (Test-Path $intuneToolPath)) {
 }
 . $intuneToolPath
 
+$bulkDeleteRoot = Join-Path $RepoRoot 'Intune' 'Device-Management' 'Bulk-Device-Delete'
+$bulkDeleteFiles = @(
+    'Auth.ps1'
+    'GraphOperations.ps1'
+    'ADOperations.ps1'
+    (Join-Path 'UI' 'Theme.ps1')
+    (Join-Path 'Helpers' 'Import-DeviceList.ps1')
+    (Join-Path 'Helpers' 'Export-Results.ps1')
+    (Join-Path 'UI' 'MainForm.ps1')
+)
+foreach ($file in $bulkDeleteFiles) {
+    $fullPath = Join-Path $bulkDeleteRoot $file
+    if (-not (Test-Path $fullPath)) {
+        throw "Cannot find Bulk Device Delete module at: $fullPath"
+    }
+    . $fullPath
+}
+
 # ─── Authentication ───────────────────────────────────────────────────────────
 function Connect-ToolPortal {
     param(
         [string]$TenantId,
-        [string[]]$Scopes = @('DeviceManagementManagedDevices.Read.All')
+        [string[]]$Scopes = @(
+            'Device.ReadWrite.All',
+            'DeviceManagementManagedDevices.ReadWrite.All'
+        )
     )
 
     if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
@@ -148,17 +171,17 @@ function Show-ToolPortal {
     $toolList.ForeColor = $theme.Text
     $toolList.Font = New-Object System.Drawing.Font('Segoe UI', 10)
     $toolList.Items.Add('Get Intune Device Info') | Out-Null
-    $toolList.Items.Add('More tools coming soon…') | Out-Null
+    $toolList.Items.Add('Bulk Device Delete') | Out-Null
     $toolList.SelectedIndex = 0
 
     $mainSplit.Panel1.Padding = New-Object System.Windows.Forms.Padding(8)
     $mainSplit.Panel1.Controls.Add($toolList)
 
-    # ── Content panel (right side) ─────────────────────────────────────────────
-    $toolPanel = New-Object System.Windows.Forms.Panel
-    $toolPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-    $toolPanel.Padding = New-Object System.Windows.Forms.Padding(12)
-    $toolPanel.BackColor = $theme.Background
+    # ── Content panel – Get Intune Device Info ─────────────────────────────────
+    $intunePanel = New-Object System.Windows.Forms.Panel
+    $intunePanel.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $intunePanel.Padding = New-Object System.Windows.Forms.Padding(12)
+    $intunePanel.BackColor = $theme.Background
 
     # ── Get Intune Device Info – controls ──────────────────────────────────────
     $searchLabel = New-Object System.Windows.Forms.Label
@@ -307,14 +330,75 @@ Enrolled: $enrolledDate
     $grid.Add_SelectionChanged($populateDetail)
 
     $toolList.Add_SelectedIndexChanged({
-        if ($toolList.SelectedIndex -ne 0) {
-            $toolList.SelectedIndex = 0
-            $statusLabel.Text = 'Only "Get Intune Device Info" is currently implemented.'
+        switch ($toolList.SelectedIndex) {
+            0 {
+                $intunePanel.Visible   = $true
+                $bulkDeletePanel.Visible = $false
+                $statusLabel.Text = 'Ready'
+            }
+            1 {
+                $intunePanel.Visible   = $false
+                $bulkDeletePanel.Visible = $true
+                $statusLabel.Text = 'Bulk Device Delete – click Launch to open the tool'
+            }
         }
     })
 
-    $toolPanel.Controls.AddRange(@($searchLabel, $searchBox, $searchButton, $grid, $detail))
-    $mainSplit.Panel2.Controls.Add($toolPanel)
+    # ── Content panel – Bulk Device Delete ─────────────────────────────────────
+    $bulkDeletePanel = New-Object System.Windows.Forms.Panel
+    $bulkDeletePanel.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $bulkDeletePanel.Padding = New-Object System.Windows.Forms.Padding(12)
+    $bulkDeletePanel.BackColor = $theme.Background
+    $bulkDeletePanel.Visible = $false
+
+    $bdTitle = New-Object System.Windows.Forms.Label
+    $bdTitle.Text = 'Bulk Device Delete Tool'
+    $bdTitle.Font = New-Object System.Drawing.Font('Segoe UI', 14, [System.Drawing.FontStyle]::Bold)
+    $bdTitle.ForeColor = $theme.Text
+    $bdTitle.AutoSize = $true
+    $bdTitle.Location = New-Object System.Drawing.Point(12, 18)
+
+    $bdDesc = New-Object System.Windows.Forms.RichTextBox
+    $bdDesc.Location = New-Object System.Drawing.Point(12, 60)
+    $bdDesc.Size = New-Object System.Drawing.Size(760, 180)
+    $bdDesc.ReadOnly = $true
+    $bdDesc.BackColor = $theme.Surface
+    $bdDesc.ForeColor = $theme.Text
+    $bdDesc.BorderStyle = [System.Windows.Forms.BorderStyle]::None
+    $bdDesc.Text = @"
+Reads a CSV file of computer names and can delete each device from one or more targets:
+
+  • Local Active Directory   (requires RSAT ActiveDirectory module)
+  • Microsoft Entra ID       (Azure AD)
+  • Microsoft Intune         (via Microsoft Graph)
+
+Required Graph permissions (already requested at portal sign-in):
+  • Device.ReadWrite.All
+  • DeviceManagementManagedDevices.ReadWrite.All
+
+CSV format: one device name per row with a header column named
+ComputerName, Name, DeviceName, Computer, Hostname, or Host.
+"@
+
+    $bdLaunch = New-Object System.Windows.Forms.Button
+    $bdLaunch.Text = 'Launch Bulk Device Delete Tool'
+    $bdLaunch.Location = New-Object System.Drawing.Point(12, 260)
+    $bdLaunch.Size = New-Object System.Drawing.Size(270, 36)
+    $bdLaunch.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $bdLaunch.FlatAppearance.BorderSize = 0
+    $bdLaunch.BackColor = $theme.Accent
+    $bdLaunch.ForeColor = [System.Drawing.Color]::White
+    $bdLaunch.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+    $bdLaunch.Add_Click({
+        Show-BulkDeleteForm
+    })
+
+    $bulkDeletePanel.Controls.AddRange(@($bdTitle, $bdDesc, $bdLaunch))
+
+    $intunePanel.Controls.AddRange(@($searchLabel, $searchBox, $searchButton, $grid, $detail))
+    # Add bulkDeletePanel first so intunePanel (added second) takes precedence
+    # when both share Dock=Fill; toggling Visible switches which panel fills the space.
+    $mainSplit.Panel2.Controls.AddRange(@($bulkDeletePanel, $intunePanel))
 
     $form.Controls.AddRange(@($mainSplit, $status, $header))
     [void]$form.ShowDialog()

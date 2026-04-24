@@ -21,8 +21,15 @@ Run `Start-M365ToolPortal.ps1` to open the GUI portal:
 ## How it works
 
 The portal dot-sources each tool's data script from its own subfolder and renders
-the results inside the GUI. The tool scripts (e.g. `Get-IntuneDeviceInfoTool.ps1`)
-remain in their original locations and are loaded on demand.
+the results inside the GUI. The tool scripts remain in their original locations
+and are loaded on demand.
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| **Get Intune Device Info** | Search Intune managed devices by name, user, or serial number |
+| **Bulk Device Delete** | Load a CSV of device names and delete them from Local AD, Entra ID, and/or Intune |
 
 ## Prerequisites
 
