@@ -4,7 +4,7 @@ Scripts and tools for querying, managing, and reporting on **enrolled Intune dev
 
 ## Available tools
 
-- [`Get-IntuneDeviceInfoTool.ps1`](./Get-IntuneDeviceInfoTool.ps1) – WinForms base program with a professional dashboard and the first tool: **Get Intune Device Info** (search by device name, user, or serial number via Microsoft Graph).
+> **Note:** The WinForms base program (`Get-IntuneDeviceInfoTool.ps1`) has moved to [`BASE/MAIN/`](../../BASE/MAIN/).
 
 ## Examples of what belongs here
 
