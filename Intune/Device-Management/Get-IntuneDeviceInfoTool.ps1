@@ -88,6 +88,8 @@ function Get-IntuneManagedDeviceInfo {
             serialNumber      = $serial
             manufacturer      = $dev.Manufacturer
             model             = $dev.Model
+            deviceId          = $dev.DeviceId
+            objectId          = $dev.Id
             enrolledDateTime  = $null
         }
     }

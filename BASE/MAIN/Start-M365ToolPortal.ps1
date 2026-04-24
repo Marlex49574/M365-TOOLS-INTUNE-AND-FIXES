@@ -212,7 +212,7 @@ function Show-ToolPortal {
 
     $grid = New-Object System.Windows.Forms.DataGridView
     $grid.Location = New-Object System.Drawing.Point(12, 82)
-    $grid.Size = New-Object System.Drawing.Size(850, 560)
+    $grid.Size = New-Object System.Drawing.Size(470, 560)
     $grid.Anchor = [System.Windows.Forms.AnchorStyles]'Top,Bottom,Left,Right'
     $grid.AllowUserToAddRows = $false
     $grid.AllowUserToDeleteRows = $false
@@ -234,8 +234,8 @@ function Show-ToolPortal {
     $grid.AlternatingRowsDefaultCellStyle.BackColor = $theme.SurfaceAlt
 
     $detail = New-Object System.Windows.Forms.RichTextBox
-    $detail.Location = New-Object System.Drawing.Point(874, 82)
-    $detail.Size = New-Object System.Drawing.Size(290, 560)
+    $detail.Location = New-Object System.Drawing.Point(494, 82)
+    $detail.Size = New-Object System.Drawing.Size(490, 560)
     $detail.Anchor = [System.Windows.Forms.AnchorStyles]'Top,Bottom,Right'
     $detail.ReadOnly = $true
     $detail.BackColor = $theme.Surface
@@ -243,7 +243,7 @@ function Show-ToolPortal {
     $detail.BorderStyle = [System.Windows.Forms.BorderStyle]::None
     $detail.Text = 'Select a row to see device details.'
 
-    $columns = @('Device Name', 'Primary User', 'OS', 'Compliance', 'Last Sync', 'Management Agent')
+    $columns = @('Device Name', 'Primary User', 'OS', 'MDM', 'Last Sync', 'Device ID', 'Object ID')
     foreach ($name in $columns) { [void]$grid.Columns.Add($name, $name) }
 
     # ── Event handlers ─────────────────────────────────────────────────────────
@@ -262,9 +262,10 @@ function Show-ToolPortal {
 Device Name: $($row.Cells['Device Name'].Value)
 Primary User: $($row.Cells['Primary User'].Value)
 OS: $($row.Cells['OS'].Value)
-Compliance: $($row.Cells['Compliance'].Value)
+MDM: $($row.Cells['MDM'].Value)
 Last Sync: $($row.Cells['Last Sync'].Value)
-Management Agent: $($row.Cells['Management Agent'].Value)
+Device ID: $($row.Cells['Device ID'].Value)
+Object ID: $($row.Cells['Object ID'].Value)
 Manufacturer: $manufacturer
 Model: $model
 Serial Number: $serialNumber
@@ -296,9 +297,10 @@ Enrolled: $enrolledDate
                     $device.deviceName,
                     $device.userPrincipalName,
                     $osText.Trim(),
-                    $device.complianceState,
+                    $device.managementAgent,
                     $lastSyncDisplay,
-                    $device.managementAgent
+                    $device.deviceId,
+                    $device.objectId
                 )
                 $grid.Rows[$rowIndex].Tag = $device
             }
