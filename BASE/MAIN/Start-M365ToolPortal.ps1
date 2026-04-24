@@ -1,23 +1,31 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    M365 Intune Tools base program with the first tool: Get Intune Device Info.
+    M365 PowerShell Tool Portal – standalone GUI launcher.
 
 .DESCRIPTION
-    Opens a professional WinForms GUI shell for Intune tooling and implements
-    the first built-in tool to query Intune managed devices from Microsoft Graph.
+    Opens a professional WinForms GUI shell that serves as the central portal for
+    all M365 PowerShell tools in this repository. Each tool's data functions are
+    loaded on demand from their respective subfolders and executed inside the portal.
+
+    Tools available in the sidebar:
+      - Get Intune Device Info  (Intune/Device-Management/Get-IntuneDeviceInfoTool.ps1)
 
 .PARAMETER TenantId
-    Optional tenant ID/domain used during Connect-MgGraph.
+    Optional tenant ID or domain used during Connect-MgGraph.
 
 .PARAMETER SkipConnect
     Skip Graph sign-in when an authenticated Graph context already exists.
 
 .EXAMPLE
-    .\Get-IntuneDeviceInfoTool.ps1
+    .\Start-M365ToolPortal.ps1
 
 .EXAMPLE
-    .\Get-IntuneDeviceInfoTool.ps1 -TenantId 'contoso.onmicrosoft.com'
+    .\Start-M365ToolPortal.ps1 -TenantId 'contoso.onmicrosoft.com'
+
+.NOTES
+    File layout expected relative to this script:
+      ../../Intune/Device-Management/Get-IntuneDeviceInfoTool.ps1
 #>
 
 [CmdletBinding()]
@@ -29,7 +37,22 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Connect-IntuneTool {
+# ─── Resolve paths ────────────────────────────────────────────────────────────
+$ScriptRoot = $PSScriptRoot
+if (-not $ScriptRoot) {
+    $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $ScriptRoot)
+
+# ─── Load tool modules ────────────────────────────────────────────────────────
+$intuneToolPath = Join-Path $RepoRoot 'Intune' 'Device-Management' 'Get-IntuneDeviceInfoTool.ps1'
+if (-not (Test-Path $intuneToolPath)) {
+    throw "Cannot find Intune device info tool at: $intuneToolPath"
+}
+. $intuneToolPath
+
+# ─── Authentication ───────────────────────────────────────────────────────────
+function Connect-ToolPortal {
     param(
         [string]$TenantId,
         [string[]]$Scopes = @('DeviceManagementManagedDevices.Read.All')
@@ -47,73 +70,12 @@ function Connect-IntuneTool {
     Connect-MgGraph @connectParams -ErrorAction Stop | Out-Null
 }
 
-function Disconnect-IntuneTool {
+function Disconnect-ToolPortal {
     Disconnect-MgGraph -ErrorAction SilentlyContinue
 }
 
-function Invoke-IntuneGraphRequest {
-    param(
-        [Parameter(Mandatory)][string]$Uri,
-        [int]$MaxRetries = 3
-    )
-
-    $attempt = 0
-    $httpNotImplemented = 501
-    while ($true) {
-        $attempt++
-        try {
-            return Invoke-MgGraphRequest -Method GET -Uri $Uri -OutputType PSObject
-        } catch {
-            $statusCode = $null
-            if ($_.Exception.Response) {
-                $statusCode = [int]$_.Exception.Response.StatusCode
-            }
-            # HTTP 501 (Not Implemented) indicates unsupported operation and is not expected to succeed on retry.
-            $isTransientServerError = ($statusCode -ge 500 -and $statusCode -le 599 -and $statusCode -ne $httpNotImplemented)
-            if ($attempt -ge $MaxRetries -or (-not $isTransientServerError -and $statusCode -notin @(429, 503))) {
-                throw
-            }
-            Start-Sleep -Seconds (2 * $attempt)
-        }
-    }
-}
-
-function Get-IntuneManagedDeviceInfo {
-    param(
-        [Parameter(Mandatory)][string]$SearchText,
-        [ValidateRange(1, 500)][int]$PageSize = 200
-    )
-
-    $safeSearch = $SearchText.Trim()
-    if ($safeSearch -notmatch "^[a-zA-Z0-9@\.\-_ ]+$") {
-        throw "Search text contains invalid characters. Only letters, numbers, spaces, and these special characters are allowed: @ . - _"
-    }
-    $filterParts = @(
-        "startswith(deviceName,'$safeSearch')"
-        "startswith(userPrincipalName,'$safeSearch')"
-        "startswith(serialNumber,'$safeSearch')"
-    )
-    $filter = $filterParts -join ' or '
-    $select = 'id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managementAgent,enrolledDateTime,manufacturer,model,serialNumber'
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$filter=$([Uri]::EscapeDataString($filter))&`$select=$select&`$top=$PageSize"
-
-    $items = [System.Collections.Generic.List[object]]::new()
-    while ($uri) {
-        $response = Invoke-IntuneGraphRequest -Uri $uri
-        foreach ($item in @($response.value)) { $items.Add($item) }
-        $uri = $response.'@odata.nextLink'
-    }
-
-    return $items.ToArray()
-}
-
-function Get-DisplayValue {
-    param($Value)
-    if ($null -eq $Value) { return '' }
-    return [string]$Value
-}
-
-function Show-IntuneToolForm {
+# ─── GUI ──────────────────────────────────────────────────────────────────────
+function Show-ToolPortal {
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -128,8 +90,9 @@ function Show-IntuneToolForm {
         MutedText  = [System.Drawing.Color]::FromArgb(156, 165, 183)
     }
 
+    # ── Main form ──────────────────────────────────────────────────────────────
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'M365 Intune Tools'
+    $form.Text = 'M365 Tool Portal'
     $form.Size = New-Object System.Drawing.Size(1220, 760)
     $form.MinimumSize = New-Object System.Drawing.Size(950, 620)
     $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
@@ -137,20 +100,21 @@ function Show-IntuneToolForm {
     $form.ForeColor = $theme.Text
     $form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 
+    # ── Header ─────────────────────────────────────────────────────────────────
     $header = New-Object System.Windows.Forms.Panel
     $header.Dock = [System.Windows.Forms.DockStyle]::Top
     $header.Height = 72
     $header.BackColor = $theme.Surface
 
     $title = New-Object System.Windows.Forms.Label
-    $title.Text = 'M365 Intune Tools'
+    $title.Text = 'M365 Tool Portal'
     $title.Font = New-Object System.Drawing.Font('Segoe UI', 16, [System.Drawing.FontStyle]::Bold)
     $title.ForeColor = $theme.Text
     $title.AutoSize = $true
     $title.Location = New-Object System.Drawing.Point(16, 10)
 
     $subtitle = New-Object System.Windows.Forms.Label
-    $subtitle.Text = 'Base Program • Tool #1: Get Intune Device Info'
+    $subtitle.Text = 'PowerShell Tool Portal  •  Select a tool from the list on the left'
     $subtitle.Font = New-Object System.Drawing.Font('Segoe UI', 9)
     $subtitle.ForeColor = $theme.MutedText
     $subtitle.AutoSize = $true
@@ -158,6 +122,17 @@ function Show-IntuneToolForm {
 
     $header.Controls.AddRange(@($title, $subtitle))
 
+    # ── Status bar ─────────────────────────────────────────────────────────────
+    $status = New-Object System.Windows.Forms.StatusStrip
+    $status.Dock = [System.Windows.Forms.DockStyle]::Bottom
+    $status.BackColor = $theme.Surface
+    $status.ForeColor = $theme.Text
+    $statusLabel = New-Object System.Windows.Forms.ToolStripStatusLabel
+    $statusLabel.Spring = $true
+    $statusLabel.Text = 'Ready'
+    $status.Items.Add($statusLabel) | Out-Null
+
+    # ── Split container: sidebar | content ─────────────────────────────────────
     $mainSplit = New-Object System.Windows.Forms.SplitContainer
     $mainSplit.Dock = [System.Windows.Forms.DockStyle]::Fill
     $mainSplit.SplitterDistance = 220
@@ -165,6 +140,7 @@ function Show-IntuneToolForm {
     $mainSplit.Panel1.BackColor = $theme.Surface
     $mainSplit.Panel2.BackColor = $theme.Background
 
+    # ── Tool list (sidebar) ────────────────────────────────────────────────────
     $toolList = New-Object System.Windows.Forms.ListBox
     $toolList.Dock = [System.Windows.Forms.DockStyle]::Fill
     $toolList.BorderStyle = [System.Windows.Forms.BorderStyle]::None
@@ -178,11 +154,13 @@ function Show-IntuneToolForm {
     $mainSplit.Panel1.Padding = New-Object System.Windows.Forms.Padding(8)
     $mainSplit.Panel1.Controls.Add($toolList)
 
+    # ── Content panel (right side) ─────────────────────────────────────────────
     $toolPanel = New-Object System.Windows.Forms.Panel
     $toolPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
     $toolPanel.Padding = New-Object System.Windows.Forms.Padding(12)
     $toolPanel.BackColor = $theme.Background
 
+    # ── Get Intune Device Info – controls ──────────────────────────────────────
     $searchLabel = New-Object System.Windows.Forms.Label
     $searchLabel.Text = 'Search by device name, primary user, or serial number'
     $searchLabel.AutoSize = $true
@@ -236,29 +214,19 @@ function Show-IntuneToolForm {
     $detail.BackColor = $theme.Surface
     $detail.ForeColor = $theme.Text
     $detail.BorderStyle = [System.Windows.Forms.BorderStyle]::None
-    $detail.Text = "Select a row to see device details."
+    $detail.Text = 'Select a row to see device details.'
 
-    $status = New-Object System.Windows.Forms.StatusStrip
-    $status.Dock = [System.Windows.Forms.DockStyle]::Bottom
-    $status.BackColor = $theme.Surface
-    $status.ForeColor = $theme.Text
-    $statusLabel = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $statusLabel.Spring = $true
-    $statusLabel.Text = 'Ready'
-    $status.Items.Add($statusLabel) | Out-Null
-
-    $columns = @(
-        'Device Name', 'Primary User', 'OS', 'Compliance', 'Last Sync', 'Management Agent'
-    )
+    $columns = @('Device Name', 'Primary User', 'OS', 'Compliance', 'Last Sync', 'Management Agent')
     foreach ($name in $columns) { [void]$grid.Columns.Add($name, $name) }
 
+    # ── Event handlers ─────────────────────────────────────────────────────────
     $populateDetail = {
         if (-not $grid.CurrentRow) { return }
-        $row = $grid.CurrentRow
+        $row    = $grid.CurrentRow
         $device = $row.Tag
-        $serialNumber = if ($device) { Get-DisplayValue $device.serialNumber } else { '' }
-        $manufacturer = if ($device) { Get-DisplayValue $device.manufacturer } else { '' }
-        $model = if ($device) { Get-DisplayValue $device.model } else { '' }
+        $serialNumber = if ($device) { Get-IntuneDisplayValue $device.serialNumber } else { '' }
+        $manufacturer = if ($device) { Get-IntuneDisplayValue $device.manufacturer } else { '' }
+        $model        = if ($device) { Get-IntuneDisplayValue $device.model }        else { '' }
         $enrolledDate = if ($device -and $device.enrolledDateTime) {
             ([datetime]$device.enrolledDateTime).ToString('yyyy-MM-dd HH:mm')
         } else { '' }
@@ -345,22 +313,21 @@ Enrolled: $enrolledDate
         }
     })
 
-    $toolPanel.Controls.AddRange(@(
-        $searchLabel, $searchBox, $searchButton, $grid, $detail
-    ))
+    $toolPanel.Controls.AddRange(@($searchLabel, $searchBox, $searchButton, $grid, $detail))
     $mainSplit.Panel2.Controls.Add($toolPanel)
 
     $form.Controls.AddRange(@($mainSplit, $status, $header))
     [void]$form.ShowDialog()
 }
 
+# ─── Entry point ──────────────────────────────────────────────────────────────
 try {
     if (-not $SkipConnect) {
-        Connect-IntuneTool -TenantId $TenantId
+        Connect-ToolPortal -TenantId $TenantId
     }
-    Show-IntuneToolForm
+    Show-ToolPortal
 } finally {
     if (-not $SkipConnect) {
-        Disconnect-IntuneTool
+        Disconnect-ToolPortal
     }
 }

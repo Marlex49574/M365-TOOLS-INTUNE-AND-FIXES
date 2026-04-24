@@ -1,23 +1,28 @@
 # MAIN – Base GUI Application
 
-This folder contains the **main entry point** for the M365 Tools base GUI program.
-The base program is a WinForms shell that will launch and host all PowerShell tools
-in this repository.
+This folder contains the **main entry point** for the M365 Tool Portal – a standalone
+WinForms GUI shell that loads and executes all PowerShell tools in this repository.
 
 ## Entry Point
 
-Run `Get-IntuneDeviceInfoTool.ps1` to open the GUI:
+Run `Start-M365ToolPortal.ps1` to open the GUI portal:
 
 ```powershell
-.\Get-IntuneDeviceInfoTool.ps1
-.\Get-IntuneDeviceInfoTool.ps1 -TenantId 'contoso.onmicrosoft.com'
+.\Start-M365ToolPortal.ps1
+.\Start-M365ToolPortal.ps1 -TenantId 'contoso.onmicrosoft.com'
 ```
 
 ## Contents
 
 | File | Description |
 |------|-------------|
-| `Get-IntuneDeviceInfoTool.ps1` | Base GUI program – WinForms shell with Tool #1: Get Intune Device Info |
+| `Start-M365ToolPortal.ps1` | Standalone GUI portal – WinForms shell that hosts all M365 tools |
+
+## How it works
+
+The portal dot-sources each tool's data script from its own subfolder and renders
+the results inside the GUI. The tool scripts (e.g. `Get-IntuneDeviceInfoTool.ps1`)
+remain in their original locations and are loaded on demand.
 
 ## Prerequisites
 

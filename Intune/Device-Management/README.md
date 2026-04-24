@@ -4,7 +4,7 @@ Scripts and tools for querying, managing, and reporting on **enrolled Intune dev
 
 ## Available tools
 
-> **Note:** The WinForms base program (`Get-IntuneDeviceInfoTool.ps1`) has moved to [`BASE/MAIN/`](../../BASE/MAIN/).
+- [`Get-IntuneDeviceInfoTool.ps1`](./Get-IntuneDeviceInfoTool.ps1) – Data functions for querying Intune managed devices from Microsoft Graph. Dot-sourced by the M365 Tool Portal (`BASE/MAIN/Start-M365ToolPortal.ps1`).
 
 ## Examples of what belongs here
 
