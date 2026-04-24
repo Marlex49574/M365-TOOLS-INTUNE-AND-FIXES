@@ -396,8 +396,8 @@ ComputerName, Name, DeviceName, Computer, Hostname, or Host.
     $bulkDeletePanel.Controls.AddRange(@($bdTitle, $bdDesc, $bdLaunch))
 
     $intunePanel.Controls.AddRange(@($searchLabel, $searchBox, $searchButton, $grid, $detail))
-    # Add bulkDeletePanel first so intunePanel (added second) takes precedence
-    # when both share Dock=Fill; toggling Visible switches which panel fills the space.
+    # Both panels share Dock=Fill in the same container; toggling Visible on each
+    # determines which one fills the right pane at any given time.
     $mainSplit.Panel2.Controls.AddRange(@($bulkDeletePanel, $intunePanel))
 
     $form.Controls.AddRange(@($mainSplit, $status, $header))
