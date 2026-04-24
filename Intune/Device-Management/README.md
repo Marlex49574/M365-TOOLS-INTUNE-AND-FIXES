@@ -4,7 +4,7 @@ Scripts and tools for querying, managing, and reporting on **enrolled Intune dev
 
 ## Available tools
 
-- [`Get-IntuneDeviceInfoTool.ps1`](./Get-IntuneDeviceInfoTool.ps1) – WinForms base program with a professional dashboard and the first tool: **Get Intune Device Info** (search by device name, user, or serial number via Microsoft Graph).
+- [`Get-IntuneDeviceInfoTool.ps1`](./Get-IntuneDeviceInfoTool.ps1) – Data functions for querying Intune managed devices from Microsoft Graph. Dot-sourced by the M365 Tool Portal (`BASE/MAIN/Start-M365ToolPortal.ps1`).
 
 ## Examples of what belongs here
 

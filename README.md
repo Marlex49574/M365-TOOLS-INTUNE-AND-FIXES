@@ -6,6 +6,7 @@ A collection of scripts, tools, and fixes for administering **Microsoft 365** en
 
 | Folder | Description |
 |--------|-------------|
+| [BASE](./BASE/) | Base layer of the M365 Tools GUI application – master shell that launches all tools |
 | [Intune](./Intune/) | Device management, app deployment, compliance, configuration profiles, and enrollment |
 | [Entra-ID](./Entra-ID/) | User and group management, Conditional Access, app registrations, and RBAC |
 | [User-Administration](./User-Administration/) | Onboarding, offboarding, bulk operations, and license management |
