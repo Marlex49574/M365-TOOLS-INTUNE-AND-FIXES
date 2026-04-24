@@ -56,23 +56,43 @@ function Get-IntuneManagedDeviceInfo {
     if ($safeSearch -notmatch "^[a-zA-Z0-9@\.\-_ ]+$") {
         throw "Search text contains invalid characters. Only letters, numbers, spaces, and these special characters are allowed: @ . - _"
     }
-    $filterParts = @(
-        "startswith(deviceName,'$safeSearch')"
-        "startswith(userPrincipalName,'$safeSearch')"
-        "startswith(serialNumber,'$safeSearch')"
-    )
-    $filter = $filterParts -join ' or '
-    $select = 'id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managementAgent,enrolledDateTime,manufacturer,model,serialNumber'
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$filter=$([Uri]::EscapeDataString($filter))&`$select=$select&`$top=$PageSize"
 
-    $items = [System.Collections.Generic.List[object]]::new()
-    while ($uri) {
-        $response = Invoke-IntuneGraphRequest -Uri $uri
-        foreach ($item in @($response.value)) { $items.Add($item) }
-        $uri = $response.'@odata.nextLink'
+    if (-not (Get-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ErrorAction SilentlyContinue)) {
+        Import-Module Microsoft.Graph.Identity.DirectoryManagement -ErrorAction Stop
     }
 
-    return $items.ToArray()
+    $filter = "startswith(displayName,'$safeSearch')"
+    $devices = Get-MgDevice -Filter $filter -Top $PageSize -ExpandProperty registeredOwners -ErrorAction Stop
+
+    $results = foreach ($dev in $devices) {
+        # Parse serial number from PhysicalIds (entries look like "[SerialNumber]:XXXX")
+        $serial = ($dev.PhysicalIds | Where-Object { $_ -like '[SerialNumber]:*' } | Select-Object -First 1) -replace '^\[SerialNumber\]:', ''
+
+        # Get primary user UPN from the first registered owner
+        $upn = ''
+        if ($dev.RegisteredOwners -and $dev.RegisteredOwners.Count -gt 0) {
+            $owner = $dev.RegisteredOwners[0]
+            if ($owner.AdditionalProperties -and $owner.AdditionalProperties['userPrincipalName']) {
+                $upn = $owner.AdditionalProperties['userPrincipalName']
+            }
+        }
+
+        [PSCustomObject]@{
+            deviceName        = $dev.DisplayName
+            userPrincipalName = $upn
+            operatingSystem   = $dev.OperatingSystem
+            osVersion         = $dev.OperatingSystemVersion
+            complianceState   = 'N/A'
+            lastSyncDateTime  = $dev.ApproximateLastSignInDateTime
+            managementAgent   = $dev.ManagementType
+            serialNumber      = $serial
+            manufacturer      = $dev.Manufacturer
+            model             = $dev.Model
+            enrolledDateTime  = $null
+        }
+    }
+
+    return @($results)
 }
 
 function Get-IntuneDisplayValue {

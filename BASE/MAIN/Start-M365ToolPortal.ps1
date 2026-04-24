@@ -84,8 +84,12 @@ function Connect-ToolPortal {
     if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
         throw "Missing required module 'Microsoft.Graph.Authentication'. Install it first: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser"
     }
+    if (-not (Get-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ListAvailable)) {
+        throw "Missing required module 'Microsoft.Graph.Identity.DirectoryManagement'. Install it first: Install-Module Microsoft.Graph.Identity.DirectoryManagement -Scope CurrentUser"
+    }
 
     Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+    Import-Module Microsoft.Graph.Identity.DirectoryManagement -ErrorAction Stop
 
     $connectParams = @{ Scopes = $Scopes }
     if ($TenantId) { $connectParams.TenantId = $TenantId }
