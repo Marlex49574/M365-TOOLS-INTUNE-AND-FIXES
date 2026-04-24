@@ -28,6 +28,9 @@ function Show-BulkDeleteForm {
         Constructs and opens the Bulk Device Delete application window (blocking).
     #>
 
+    # Relax strictness for WinForms dynamic properties (matches standalone launcher behaviour).
+    Set-StrictMode -Off
+
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -602,5 +605,7 @@ function Show-BulkDeleteForm {
     Apply-ThemeToForm -Control $form
 
     # ─── Show form ────────────────────────────────────────────────────────────
-    [System.Windows.Forms.Application]::Run($form)
+    # Use ShowDialog so the form works both as a standalone window and as a
+    # modal dialog when launched from within the M365 Tool Portal.
+    [void]$form.ShowDialog()
 }
