@@ -162,7 +162,7 @@ function Show-ToolPortal {
     # ── Split container: sidebar | content ─────────────────────────────────────
     $mainSplit = New-Object System.Windows.Forms.SplitContainer
     $mainSplit.Dock = [System.Windows.Forms.DockStyle]::Fill
-    $mainSplit.SplitterDistance = 220
+    $mainSplit.SplitterDistance = 600
     $mainSplit.BackColor = $theme.Border
     $mainSplit.Panel1.BackColor = $theme.Surface
     $mainSplit.Panel2.BackColor = $theme.Background
@@ -187,39 +187,55 @@ function Show-ToolPortal {
     $intunePanel.Padding = New-Object System.Windows.Forms.Padding(12)
     $intunePanel.BackColor = $theme.Background
 
-    # ── Get Intune Device Info – controls ──────────────────────────────────────
+    # ── Get Intune Device Info – search bar ────────────────────────────────────
+    $searchPanel = New-Object System.Windows.Forms.Panel
+    $searchPanel.Dock = [System.Windows.Forms.DockStyle]::Top
+    $searchPanel.Height = 72
+    $searchPanel.BackColor = $theme.Background
+
     $searchLabel = New-Object System.Windows.Forms.Label
     $searchLabel.Text = 'Search by device name, primary user, or serial number'
     $searchLabel.AutoSize = $true
     $searchLabel.ForeColor = $theme.MutedText
-    $searchLabel.Location = New-Object System.Drawing.Point(12, 18)
+    $searchLabel.Location = New-Object System.Drawing.Point(12, 8)
 
     $searchBox = New-Object System.Windows.Forms.TextBox
-    $searchBox.Location = New-Object System.Drawing.Point(12, 42)
-    $searchBox.Width = 560
+    $searchBox.Location = New-Object System.Drawing.Point(12, 32)
+    $searchBox.Anchor = [System.Windows.Forms.AnchorStyles]'Top,Left,Right'
+    $searchBox.Width = 420
     $searchBox.BackColor = $theme.Surface
     $searchBox.ForeColor = $theme.Text
     $searchBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 
     $searchButton = New-Object System.Windows.Forms.Button
     $searchButton.Text = 'Search'
-    $searchButton.Location = New-Object System.Drawing.Point(584, 40)
+    $searchButton.Anchor = [System.Windows.Forms.AnchorStyles]'Top,Right'
+    $searchButton.Location = New-Object System.Drawing.Point(440, 30)
     $searchButton.Size = New-Object System.Drawing.Size(96, 28)
     $searchButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $searchButton.FlatAppearance.BorderSize = 0
     $searchButton.BackColor = $theme.Accent
     $searchButton.ForeColor = [System.Drawing.Color]::White
 
+    $searchPanel.Controls.AddRange(@($searchLabel, $searchBox, $searchButton))
+
+    # ── Get Intune Device Info – grid/detail split ─────────────────────────────
+    $innerSplit = New-Object System.Windows.Forms.SplitContainer
+    $innerSplit.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $innerSplit.Orientation = [System.Windows.Forms.Orientation]::Horizontal
+    $innerSplit.SplitterDistance = 430
+    $innerSplit.BackColor = $theme.Border
+    $innerSplit.Panel1.BackColor = $theme.Background
+    $innerSplit.Panel2.BackColor = $theme.Background
+
     $grid = New-Object System.Windows.Forms.DataGridView
-    $grid.Location = New-Object System.Drawing.Point(12, 82)
-    $grid.Size = New-Object System.Drawing.Size(470, 560)
-    $grid.Anchor = [System.Windows.Forms.AnchorStyles]'Top,Bottom,Left,Right'
+    $grid.Dock = [System.Windows.Forms.DockStyle]::Fill
     $grid.AllowUserToAddRows = $false
     $grid.AllowUserToDeleteRows = $false
     $grid.ReadOnly = $true
     $grid.MultiSelect = $false
     $grid.SelectionMode = [System.Windows.Forms.DataGridViewSelectionMode]::FullRowSelect
-    $grid.AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+    $grid.AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::AllCells
     $grid.RowHeadersVisible = $false
     $grid.BackgroundColor = $theme.Surface
     $grid.GridColor = $theme.Border
@@ -233,17 +249,19 @@ function Show-ToolPortal {
     $grid.DefaultCellStyle.SelectionBackColor = [System.Drawing.Color]::FromArgb(0, 90, 170)
     $grid.AlternatingRowsDefaultCellStyle.BackColor = $theme.SurfaceAlt
 
+    $innerSplit.Panel1.Controls.Add($grid)
+
     $detail = New-Object System.Windows.Forms.RichTextBox
-    $detail.Location = New-Object System.Drawing.Point(494, 82)
-    $detail.Size = New-Object System.Drawing.Size(490, 560)
-    $detail.Anchor = [System.Windows.Forms.AnchorStyles]'Top,Bottom,Right'
+    $detail.Dock = [System.Windows.Forms.DockStyle]::Fill
     $detail.ReadOnly = $true
     $detail.BackColor = $theme.Surface
     $detail.ForeColor = $theme.Text
     $detail.BorderStyle = [System.Windows.Forms.BorderStyle]::None
     $detail.Text = 'Select a row to see device details.'
 
-    $columns = @('Device Name', 'Primary User', 'OS', 'MDM', 'Last Sync', 'Device ID', 'Object ID')
+    $innerSplit.Panel2.Controls.Add($detail)
+
+    $columns = @('Device Name', 'Primary User', 'OS', 'Managed by', 'Last Sync', 'Device ID', 'Object ID')
     foreach ($name in $columns) { [void]$grid.Columns.Add($name, $name) }
 
     # ── Event handlers ─────────────────────────────────────────────────────────
@@ -262,7 +280,7 @@ function Show-ToolPortal {
 Device Name: $($row.Cells['Device Name'].Value)
 Primary User: $($row.Cells['Primary User'].Value)
 OS: $($row.Cells['OS'].Value)
-MDM: $($row.Cells['MDM'].Value)
+Managed by: $($row.Cells['Managed by'].Value)
 Last Sync: $($row.Cells['Last Sync'].Value)
 Device ID: $($row.Cells['Device ID'].Value)
 Object ID: $($row.Cells['Object ID'].Value)
@@ -401,7 +419,8 @@ ComputerName, Name, DeviceName, Computer, Hostname, or Host.
 
     $bulkDeletePanel.Controls.AddRange(@($bdTitle, $bdDesc, $bdLaunch))
 
-    $intunePanel.Controls.AddRange(@($searchLabel, $searchBox, $searchButton, $grid, $detail))
+    # $innerSplit (Fill) must be index 0 so WinForms processes $searchPanel (Top) first
+    $intunePanel.Controls.AddRange(@($innerSplit, $searchPanel))
     # Both panels share Dock=Fill in the same container; toggling Visible on each
     # determines which one fills the right pane at any given time.
     $mainSplit.Panel2.Controls.AddRange(@($bulkDeletePanel, $intunePanel))

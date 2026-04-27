@@ -84,7 +84,15 @@ function Get-IntuneManagedDeviceInfo {
             osVersion         = $dev.OperatingSystemVersion
             complianceState   = 'N/A'
             lastSyncDateTime  = $dev.ApproximateLastSignInDateTime
-            managementAgent   = $dev.ManagementType
+            managementAgent   = switch ($dev.ManagementType) {
+                'mdm'         { 'Intune' }
+                'easMdm'      { 'Intune (EAS)' }
+                'intuneClient' { 'Intune' }
+                'configurationManagerClientMdm' { 'Co-managed' }
+                'configurationManagerClientMdmEas' { 'Co-managed (EAS)' }
+                'eas'         { 'EAS' }
+                default       { if ($dev.ManagementType) { $dev.ManagementType } else { 'Unknown' } }
+            }
             serialNumber      = $serial
             manufacturer      = $dev.Manufacturer
             model             = $dev.Model
