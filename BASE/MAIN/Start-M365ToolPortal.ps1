@@ -163,8 +163,6 @@ function Show-ToolPortal {
     $mainSplit = New-Object System.Windows.Forms.SplitContainer
     $mainSplit.Dock = [System.Windows.Forms.DockStyle]::Fill
     $mainSplit.SplitterDistance = 280
-    $mainSplit.Panel1MinSize = 160
-    $mainSplit.Panel2MinSize = 600
     $mainSplit.BackColor = $theme.Border
     $mainSplit.Panel1.BackColor = $theme.Surface
     $mainSplit.Panel2.BackColor = $theme.Background
